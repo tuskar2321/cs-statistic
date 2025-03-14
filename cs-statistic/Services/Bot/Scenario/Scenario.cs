@@ -9,7 +9,7 @@ public class Scenario
     private ScenarioTitle Title { get; set; }
     public long ChatId { get; init; }
     private List<Action> Actions { get; init; }
-    private ScenarioStatus Status { get; set; }
+    public ScenarioStatus Status { get; private set; }
     
     public Scenario(long chatId, Models.MongoDB.ScenarioSchema schema)
     {

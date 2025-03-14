@@ -24,7 +24,7 @@ public class ScenarioExecutor(MainDbProvider mainDbProviderDbProvider, ITelegram
                 var schema = await mainDbProviderDbProvider.GetSchemaByTitle(title) ??
                              throw new NullReferenceException();
                 scenario = new Scenario(chatId, schema);
-                // scenario save
+                await mainDbProviderDbProvider.ReplaceScenario(scenario);
             }
             else
             {
@@ -50,6 +50,6 @@ public class ScenarioExecutor(MainDbProvider mainDbProviderDbProvider, ITelegram
 
     public async Task ExecuteAction(Action action)
     {
-        // ???
+        //todo switch actions type
     }
 }
