@@ -1,18 +1,25 @@
+using MongoDB.Bson.Serialization.Attributes;
+using tuskar.statisticApp.Services.Scenario;
+
 namespace tuskar.statisticApp.Models;
 
 public static class MongoDB
 {
-    public record User
+    public record User(DateTime registerT, long chatId, string nickName)
     {
-        public User(DateTime registerT, long chatId, string nickName)
-        {
-            this.registerT = registerT;
-            this.chatId = chatId;
-            this.nickName = nickName;
-        }
+        public string nickName { get; set; } = nickName;
+        public long chatId { get; set; } = chatId;
+        public DateTime registerT { get; set; } = registerT;
+    }
 
-        public string nickName { get; set; }
-        public long chatId { get; set; }
-        public DateTime registerT { get; set; }
-    };
+    public record ScenarioAction(
+        ActionType Type,
+        Dictionary<string, string>? Parameters
+    );
+
+    public record ScenarioSchema
+    {
+        [BsonId] public ScenarioTitle Title { get; init; }
+        public ScenarioAction[] Actions { get; init; }
+    }
 }

@@ -4,6 +4,7 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using tuskar.statisticApp.Configs;
+using tuskar.statisticApp.Services.Scenario;
 
 namespace tuskar.statisticApp.Services;
 
@@ -85,7 +86,7 @@ public class Bot
             }
             case "/me":
             {
-                await CommandExecutor.Me(_mainDbProviderDbProvider, botClient, chatId);
+                await new ScenarioExecutor(_mainDbProviderDbProvider, _botClient).ExecuteScenario(chatId, ScenarioTitle.Me);
                 break;
             }
             default:

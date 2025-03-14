@@ -1,26 +1,25 @@
-using System.Collections;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace tuskar.statisticApp.Services.Scenario;
 
 public class Scenario
 {
-    private string ChatId { get; init; }
-
-    private readonly ArrayList _steps;
-    
+    [BsonId]
+    private Guid Id { get; set; } = Guid.NewGuid();
+    private ScenarioTitle Title { get; set; }
+    public long ChatId { get; init; }
+    private List<Action> Actions { get; init; }
     private ScenarioStatus Status { get; set; }
     
-    private Step CurrentStep { get; set; }
-    
-    public Step GetCurrentStep() => CurrentStep;
-
-    public Scenario(string Id, ArrayList steps)
+    public Scenario(long chatId, Models.MongoDB.ScenarioSchema schema)
     {
-        ChatId = Id;
-        _steps = steps;
+        ChatId = chatId;
+        Title = schema.Title;
+        Actions = schema.Actions.Select(actionSchema => new Action(actionSchema, Id)).ToList();
+        Status = ScenarioStatus.Current;
     }
 
-    public async Task<Scenario> SetStatus(ScenarioStatus status)
+    public async Task<Scenario> SetStatus(DataBase.MainDbProvider mainDbProviderDbProvider, ScenarioStatus status)
     {
         //mongoDB save
         await Task.Delay(1000);
@@ -29,18 +28,29 @@ public class Scenario
     }
 
     // start new Scenario
-    public async Task Execute()
+    public async Task Execute(ScenarioExecutor executor)
     {
-        //mongoDB insert new scenario
-        // scenarioColl.updateMany(chatId: ChatId, {$set: {status: Skipped}})
-        await Task.Delay(1000);
-        
+        var currentAction = Actions.Find(action => action.GetStatus() == StepStatus.Waiting);
+        if (currentAction != null)
+        {
+            await currentAction.Execute(executor, currentAction.Parameters);
+        }
+        else
+        {
+            await SetStatus(executor.GetProvider, ScenarioStatus.Finished);
+        }
     }
 }
 
 public enum ScenarioStatus
 {
-    New,
+    Current,
     Finished,
     Skipped
+}
+
+//вынести в конфиг
+public enum ScenarioTitle
+{
+    Me
 }
