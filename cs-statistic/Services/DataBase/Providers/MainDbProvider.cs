@@ -25,6 +25,26 @@ public class MainDbProvider(MongoDbClient client)
             );
     }
 
+    public async Task UpdateScenarioStatus(Guid scenarioId, ScenarioStatus newStatus)
+    {
+        var filter = Builders<Scenario.Scenario>.Filter.Eq(sc => sc.Id, scenarioId);
+        var update = Builders<Scenario.Scenario>.Update.Set(sc => sc.Status, newStatus);
+        await Scenarios
+            .UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+    }
+
+    public async Task SkipAllScenarios(long chatId)
+    {
+        var filterBuilder = Builders<Scenario.Scenario>.Filter;
+        var filters = filterBuilder.And(
+            filterBuilder.Eq(sc => sc.ChatId, chatId),
+            filterBuilder.Eq(sc => sc.Status, ScenarioStatus.Current)
+        );
+        var update = Builders<Scenario.Scenario>.Update.Set(sc => sc.Status, ScenarioStatus.Skipped);
+        await Scenarios
+            .UpdateManyAsync(filters, update);
+    }
+
     public async Task<Services.Scenario.Scenario?> GetScenarioByChatId(long chatId)
     {
         return await Scenarios
@@ -39,6 +59,23 @@ public class MainDbProvider(MongoDbClient client)
             .Find(schema => schema.Title == title)
             .ToListAsync()
             .ContinueWith(task => task.Result.FirstOrDefault());
+    }
+
+    public async Task<ReplaceOneResult> ReplaceSchema(Models.MongoDB.ScenarioSchema schema)
+    {
+        return await ScenarioSchemas.ReplaceOneAsync(sc => sc.Title == schema.Title, schema,
+            new ReplaceOptions { IsUpsert = true });
+    }
+
+    public async Task UpdateActionStatus(Guid scenarioId, Guid actionId, ActionStatus newStatus)
+    {
+        var filterBuilder = Builders<Scenario.Scenario>.Filter;
+        var filters = filterBuilder.And(
+            filterBuilder.Eq(sc => sc.Id, scenarioId),
+            filterBuilder.ElemMatch(sc => sc.Actions, act => act.Id == actionId)
+        );
+        var update = Builders<Scenario.Scenario>.Update.Set("Actions.$.Status", newStatus);
+        await Scenarios.UpdateOneAsync(filters, update);
     }
 
     public async Task<Models.MongoDB.User?> GetUserByChatId(long chatId)

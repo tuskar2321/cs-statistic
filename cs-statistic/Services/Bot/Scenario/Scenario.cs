@@ -1,16 +1,21 @@
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using Telegram.Bot.Types;
+using tuskar.statisticApp.Services.DataBase;
 
 namespace tuskar.statisticApp.Services.Scenario;
 
 public class Scenario
 {
     [BsonId]
-    private Guid Id { get; set; } = Guid.NewGuid();
+    [BsonRepresentation(BsonType.String)]
+    public Guid Id { get; } = Guid.NewGuid();
+
     private ScenarioTitle Title { get; set; }
     public long ChatId { get; init; }
-    private List<Action> Actions { get; init; }
+    public List<Action> Actions { get; init; }
     public ScenarioStatus Status { get; private set; }
-    
+
     public Scenario(long chatId, Models.MongoDB.ScenarioSchema schema)
     {
         ChatId = chatId;
@@ -19,21 +24,42 @@ public class Scenario
         Status = ScenarioStatus.Current;
     }
 
-    public async Task<Scenario> SetStatus(DataBase.MainDbProvider mainDbProviderDbProvider, ScenarioStatus status)
+    private async Task SetStatus(MainDbProvider provider, ScenarioStatus status)
     {
-        //mongoDB save
-        await Task.Delay(1000);
+        await provider.UpdateScenarioStatus(Id, status);
         Status = status;
-        return this;
     }
 
-    // start new Scenario
-    public async Task Execute(ScenarioExecutor executor)
+    public async Task Execute(ScenarioExecutor executor, Update update)
     {
-        var currentAction = Actions.Find(action => action.GetStatus() == StepStatus.Waiting);
+        var currentAction = Actions.Find(action =>
+            new List<ActionStatus> { ActionStatus.Waiting, ActionStatus.UserAwait }.Contains(action.GetStatus()));
         if (currentAction != null)
         {
-            await currentAction.Execute(executor, currentAction.Parameters);
+            switch (currentAction.GetStatus())
+            {
+                case ActionStatus.Waiting:
+                {
+                    var isLast = Actions.IndexOf(currentAction).Equals(Actions.Count - 1);
+                    await currentAction.Execute(executor, ChatId, currentAction.Parameters, isLast);
+                    break;
+                }
+                case ActionStatus.UserAwait:
+                {
+                    await currentAction.SetStatus(ActionStatus.Success, null, executor.GetProvider);
+                    //TODO: подумать как правильно передавать апдейты в следующий шаг
+                    var updateParams = new Dictionary<string, string>
+                    {
+                        {
+                            "userAwaitActionMessage", update.Message?.Text ?? string.Empty
+                        }
+                    };
+                    var nextAction = Actions.ElementAtOrDefault(Actions.IndexOf(currentAction) + 1) ?? throw new Exception("UserAwait action cannot be last action");
+                    var mergedParams = nextAction.Parameters.Concat(updateParams).ToDictionary(t => t.Key, t => t.Value);
+                    await nextAction.Execute(executor, ChatId, mergedParams, Actions.IndexOf(nextAction).Equals(Actions.Count - 1));
+                    break;
+                }
+            }
         }
         else
         {
@@ -49,8 +75,11 @@ public enum ScenarioStatus
     Skipped
 }
 
-//вынести в конфиг
+//TODO: move to config
 public enum ScenarioTitle
 {
-    Me
+    Start,
+    StartWithAwait,
+    Me,
+    AddFaceItAccount
 }

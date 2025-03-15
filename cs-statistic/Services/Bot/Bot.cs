@@ -28,6 +28,7 @@ public class Bot
         [
             new("ping", "Проверка доступности бота"),
             new("me", "Проверка наличия юзера"),
+            new("start", "Старт")
         ];
         
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -67,11 +68,7 @@ public class Bot
         {
             case "/start":
             {
-                await _botClient.SendMessage(
-                    chatId,
-                    cancellationToken: cancellationToken,
-                    text: "Hello World!"
-                );
+                await new ScenarioExecutor(_mainDbProviderDbProvider, _botClient).ExecuteScenario(chatId, ScenarioTitle.Start, update);
                 break;
             }
             case "/ping":
@@ -86,7 +83,7 @@ public class Bot
             }
             case "/me":
             {
-                await new ScenarioExecutor(_mainDbProviderDbProvider, _botClient).ExecuteScenario(chatId, ScenarioTitle.Me);
+                await new ScenarioExecutor(_mainDbProviderDbProvider, _botClient).ExecuteScenario(chatId, ScenarioTitle.Me, update);
                 break;
             }
             default:

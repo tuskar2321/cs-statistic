@@ -70,7 +70,8 @@ public static class WebAppExtensions
         Task[] initTasks =
         [
             app.Services.GetRequiredService<Bot>().Start(),
-            app.Services.GetRequiredService<MongoDbClient>().Start()
+            app.Services.GetRequiredService<MongoDbClient>().Start(),
+            app.Services.GetRequiredService<MongoDbClient>().InitDefaultSchemas()
         ];
 
         await Task.WhenAll(initTasks);
